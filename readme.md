@@ -104,28 +104,6 @@ mental_health_chatbot/
 └── README.md                   # This file
 ```
 
-## API Reference
-
-### MentalHealthChatbot Class
-
-#### `__init__(model_name="mistral", base_url="http://localhost:11434")`
-Initialize the chatbot with specified Ollama model.
-
-#### `analyze_mood(user_mood: str) -> str`
-Analyze mood and provide empathetic support with motivation.
-
-#### `suggest_meditation(user_mood: str) -> str`
-Generate meditation recommendations based on mood.
-
-#### `suggest_exercises(user_mood: str) -> str`
-Generate exercise recommendations based on mood.
-
-#### `suggest_travel(user_mood: str) -> str`
-Generate travel destination suggestions based on mood.
-
-#### `get_full_support(user_mood: str) -> Dict[str, str]`
-Get comprehensive support across all categories.
-
 ## Supported Models
 
 Recommended Ollama models (install with `ollama pull <model>`):
