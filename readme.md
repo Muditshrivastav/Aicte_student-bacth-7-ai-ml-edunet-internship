@@ -100,7 +100,6 @@ Environment variables (optional):
 ```
 mental_health_chatbot/
 ├── mental_health_chatbot.py    # Core chatbot logic using LangChain
-├── streamlit_app.py            # Streamlit web interface
 ├── requirements.txt            # Python dependencies
 └── README.md                   # This file
 ```
@@ -131,7 +130,7 @@ Get comprehensive support across all categories.
 
 Recommended Ollama models (install with `ollama pull <model>`):
 
-- `mistral` - Fast and efficient
+- `gemma3` - Fast and efficient
 - `llama2` - Accurate and versatile
 - `neural-chat` - Optimized for conversations
 - `dolphin-mixtral` - Higher quality responses
@@ -140,10 +139,8 @@ Recommended Ollama models (install with `ollama pull <model>`):
 
 This chatbot is designed for **supportive purposes only** and is **not a replacement for professional mental health care**. If you are experiencing a mental health crisis, please reach out to:
 
-- National Suicide Prevention Lifeline: 988 (USA)
-- Crisis Text Line: Text HOME to 741741
-- International Association for Suicide Prevention: https://www.iasp.info/resources/Crisis_Centres/
-
+- India Helpline: 1800-599-0019 
+  
 ## License
 
 This project is open source and available for educational purposes.
