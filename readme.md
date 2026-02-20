@@ -48,8 +48,6 @@ This project focuses on emotional well-being by offering a safe space for users 
    cd mental-health-chatbot
 ---
 
-## 📂 Project Structure
-
 2. **Create a virtual environment (optional but recommended)**
 python -m venv venv
 source venv/bin/activate   # On Windows: venv\Scripts\activate
