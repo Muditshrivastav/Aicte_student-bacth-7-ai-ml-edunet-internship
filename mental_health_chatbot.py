@@ -1,11 +1,14 @@
 import streamlit as st
 from PIL import Image
-
-from langchain_ollama import ChatOllama
-from langchain_core.messages import SystemMessage
 from dotenv import load_dotenv
+from langchain_groq import ChatGroq
+from langchain_core.messages import (
+    SystemMessage,
+    HumanMessage,
+    AIMessage
+)
 
-# Load environment variables
+# ---------------- LOAD ENV ----------------
 load_dotenv()
 
 # ---------------- PAGE CONFIG ----------------
@@ -24,7 +27,6 @@ if "affirmation" not in st.session_state:
 
 # ---------------- SIDEBAR ----------------
 st.sidebar.title("🧠 Companion Controls")
-
 st.sidebar.markdown("---")
 
 st.sidebar.subheader("Quick Mood")
@@ -79,23 +81,22 @@ for message in st.session_state.messages:
         st.markdown(message["content"])
 
 # ---------------- LLM ----------------
-llm = ChatOllama(
-    model="gemma3:1b",  # change to gemma3:27b if available
-    temperature=0.8,
-    top_p=0.95
+llm = ChatGroq(
+    model="llama-3.1-8b-instant",
+    temperature=0.7
 )
 
 # ---------------- SYSTEM CONTEXT ----------------
 SYSTEM_CONTEXT = """
 You are a calm, empathetic mental health companion for students.
 
-You speak like a real, caring human — not a chatbot and but act as a therapist.
+You speak like a real, caring human — not a chatbot — and gently support the user emotionally.
 
 Guidelines:
 - Respond naturally and conversationally
 - Avoid repeating the same comforting phrases
 - Offer gentle emotional support
-- Suggest calming or grounding ideas only when it feels appropriate
+- Suggest calming or grounding ideas only when appropriate
 - Do not sound scripted or clinical
 - Never diagnose or give medical advice
 """
@@ -126,25 +127,26 @@ if user_input:
         st.markdown(user_input)
 
     with st.spinner("Listening..."):
+        # ✅ STRICT LangChain message format
         messages = [SystemMessage(content=SYSTEM_CONTEXT)]
 
-        # Add recent conversation (last 6 turns)
         for msg in st.session_state.messages[-6:]:
-            messages.append({
-                "role": msg["role"],
-                "content": msg["content"]
-            })
+            if msg["role"] == "user":
+                messages.append(HumanMessage(content=msg["content"]))
+            else:
+                messages.append(AIMessage(content=msg["content"]))
 
-        response = llm.invoke(messages).content
+        response = llm.invoke(messages)
+        assistant_reply = response.content
 
     # Save assistant message
     st.session_state.messages.append({
         "role": "assistant",
-        "content": response
+        "content": assistant_reply
     })
 
     with st.chat_message("assistant"):
-        st.markdown(response)
+        st.markdown(assistant_reply)
 
 # ---------------- AFFIRMATION ----------------
 if st.session_state.affirmation:
