@@ -41,11 +41,11 @@ export GROQ_API_KEY=your_groq_api_key_here
 setx GROQ_API_KEY "your_groq_api_key_here"
 
 ### 3. Set Up Python Environment
-# Create virtual environment
+### Create virtual environment
 python -m venv venv
 
-# Activate virtual environment
-# Windows:
+### Activate virtual environment
+### Windows:
 venv\Scripts\activate
 # macOS/Linux:
 source venv/bin/activate
