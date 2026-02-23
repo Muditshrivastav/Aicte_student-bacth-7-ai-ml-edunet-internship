@@ -1,12 +1,13 @@
 import streamlit as st
 from PIL import Image
+import cv2
+import numpy as np
+import time
+from deepface import DeepFace
 from dotenv import load_dotenv
+
 from langchain_groq import ChatGroq
-from langchain_core.messages import (
-    SystemMessage,
-    HumanMessage,
-    AIMessage
-)
+from langchain_core.messages import SystemMessage
 
 # ---------------- LOAD ENV ----------------
 load_dotenv()
@@ -25,9 +26,11 @@ if "messages" not in st.session_state:
 if "affirmation" not in st.session_state:
     st.session_state.affirmation = False
 
+if "camera_on" not in st.session_state:
+    st.session_state.camera_on = False
+
 # ---------------- SIDEBAR ----------------
 st.sidebar.title("🧠 Companion Controls")
-st.sidebar.markdown("---")
 
 st.sidebar.subheader("Quick Mood")
 quick_mood = st.sidebar.radio(
@@ -47,112 +50,148 @@ if st.sidebar.button("🧹 Clear Conversation"):
 st.sidebar.markdown("---")
 st.sidebar.info(
     "🚨 If you feel unsafe:\n\n"
-    "India Helpline: **1800-599-0019 (KIRAN)**"
+    "🇮🇳 **KIRAN Helpline (24/7): 1800-599-0019**"
 )
 
-# ---------------- MAIN UI ----------------
-st.title("🧠 Mental Health Companion Chatbot")
+# ---------------- TABS ----------------
+tab1, tab2 = st.tabs(["💬 Chatbot", "😊 Facial Emotion Detection"])
 
-st.write(
-    "This is a calm, supportive space to talk about how you're feeling. "
-    "You can chat freely and optionally share a mood image."
-)
+# =========================================================
+# ===================== TAB 1 : CHATBOT ===================
+# =========================================================
+with tab1:
+    st.title("🧠 Mental Health Companion Chatbot")
 
-st.warning(
-    "⚠️ Disclaimer: This chatbot is not a medical professional."
-)
+    st.write(
+        "This is a calm, supportive space to talk about how you're feeling."
+    )
 
-# ---------------- IMAGE INPUT ----------------
-st.markdown("🖼️ Optional: Share a mood image")
+    st.warning(
+        "⚠️ Disclaimer: This chatbot is not a medical professional."
+    )
 
-chat_image = st.file_uploader(
-    "",
-    type=["jpg", "jpeg", "png"],
-    key="chat_image"
-)
+    # -------- LLM (GROQ) --------
+    llm = ChatGroq(
+        model="llama-3.1-8b-instant",
+        temperature=0.8
+    )
 
-if chat_image:
-    image = Image.open(chat_image)
-    st.image(image, caption="Shared mood image", width=220)
-
-# ---------------- CHAT HISTORY ----------------
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# ---------------- LLM ----------------
-llm = ChatGroq(
-    model="llama-3.1-8b-instant",
-    temperature=0.7
-)
-
-# ---------------- SYSTEM CONTEXT ----------------
-SYSTEM_CONTEXT = """
+    SYSTEM_CONTEXT = """
 You are a calm, empathetic mental health companion for students.
 
-You speak like a real, caring human — not a chatbot — and gently support the user emotionally.
+Speak like a real, caring human — not a chatbot or therapist.
 
 Guidelines:
-- Respond naturally and conversationally
+- Be natural and conversational
 - Avoid repeating the same comforting phrases
-- Offer gentle emotional support
+- Offer emotional support
 - Suggest calming or grounding ideas only when appropriate
-- Do not sound scripted or clinical
+- Do not sound clinical
 - Never diagnose or give medical advice
 """
 
-# ---------------- CHAT INPUT ----------------
-user_input = st.chat_input("Share what you're feeling...")
+    # -------- CHAT HISTORY --------
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-if user_input:
-    # Apply quick mood
-    if quick_mood != "None":
-        user_input = f"I am feeling {quick_mood.split(' ')[1].lower()}. {user_input}"
+    # -------- CHAT INPUT --------
+    user_input = st.chat_input("Share what you're feeling...")
 
-    # Add image context gently
-    if chat_image:
-        user_input = (
-            "The user has shared a mood-related image. "
-            "Respond gently using both the image context and the message.\n\n"
-            f"{user_input}"
+    if user_input:
+        if quick_mood != "None":
+            user_input = f"I am feeling {quick_mood.split(' ')[1].lower()}. {user_input}"
+
+        st.session_state.messages.append(
+            {"role": "user", "content": user_input}
         )
 
-    # Save user message
-    st.session_state.messages.append({
-        "role": "user",
-        "content": user_input
-    })
+        with st.chat_message("user"):
+            st.markdown(user_input)
 
-    with st.chat_message("user"):
-        st.markdown(user_input)
+        with st.spinner("Listening..."):
+            messages = [SystemMessage(content=SYSTEM_CONTEXT)]
 
-    with st.spinner("Listening..."):
-        # ✅ STRICT LangChain message format
-        messages = [SystemMessage(content=SYSTEM_CONTEXT)]
+            for msg in st.session_state.messages[-6:]:
+                messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
 
-        for msg in st.session_state.messages[-6:]:
-            if msg["role"] == "user":
-                messages.append(HumanMessage(content=msg["content"]))
-            else:
-                messages.append(AIMessage(content=msg["content"]))
+            response = llm.invoke(messages).content
 
-        response = llm.invoke(messages)
-        assistant_reply = response.content
+        st.session_state.messages.append(
+            {"role": "assistant", "content": response}
+        )
 
-    # Save assistant message
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": assistant_reply
-    })
+        with st.chat_message("assistant"):
+            st.markdown(response)
 
-    with st.chat_message("assistant"):
-        st.markdown(assistant_reply)
+    # -------- AFFIRMATION --------
+    if st.session_state.affirmation:
+        st.markdown("---")
+        st.markdown("### 🌞 Daily Affirmation")
+        st.write(
+            "You are doing the best you can with what you have right now — and that is enough."
+        )
+        st.session_state.affirmation = False
 
-# ---------------- AFFIRMATION ----------------
-if st.session_state.affirmation:
-    st.markdown("---")
-    st.markdown("### 🌞 Daily Affirmation")
+# =========================================================
+# ============ TAB 2 : FACIAL EMOTION DETECTION ============
+# =========================================================
+with tab2:
+    st.header("😊 Live Facial Emotion Detection")
+
     st.write(
-        "You are doing the best you can with what you have right now — and that is enough."
+        "This feature uses your webcam to detect facial emotions in real time."
     )
-    st.session_state.affirmation = False
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("▶ Start Camera"):
+            st.session_state.camera_on = True
+
+    with col2:
+        if st.button("⏹ Stop Camera"):
+            st.session_state.camera_on = False
+
+    frame_placeholder = st.empty()
+    emotion_placeholder = st.empty()
+
+    if st.session_state.camera_on:
+        cap = cv2.VideoCapture(0)
+
+        if not cap.isOpened():
+            st.error("❌ Could not access the camera.")
+        else:
+            while st.session_state.camera_on:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                frame_placeholder.image(frame_rgb, channels="RGB")
+
+                try:
+                    result = DeepFace.analyze(
+                        frame_rgb,
+                        actions=["emotion"],
+                        enforce_detection=False
+                    )
+
+                    emotion = result[0]["dominant_emotion"]
+                    confidence = result[0]["emotion"][emotion]
+
+                    emotion_placeholder.success(
+                        f"Detected Emotion: **{emotion.upper()}** ({confidence:.2f}%)"
+                    )
+
+                except Exception:
+                    emotion_placeholder.warning("Face not clearly detected")
+
+                time.sleep(0.1)
+
+            cap.release()
+            frame_placeholder.empty()
+            emotion_placeholder.info("Camera stopped.")
