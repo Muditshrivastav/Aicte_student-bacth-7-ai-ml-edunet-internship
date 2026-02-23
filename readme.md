@@ -16,7 +16,8 @@ An AI-powered mental health chatbot built with LangChain, Streamlit, and Ollama 
 
 - **LangChain** - LLM orchestration and prompt chains
 - **Streamlit** - Interactive web interface
-- **Ollama** - Local language model inference
+- **OpenCV** - computer vision for live facial emotion detection
+- **Groq** -  llm for fast inference
 - **Python 3.8+**
 
 ## Setup Instructions
@@ -72,17 +73,27 @@ streamlit run streamlit_app.py
 
 The app will be available at `http://localhost:8501`
 
-## Usage
+## How It Works
 
-1. **Initialize the Chatbot**: Click "Initialize Chatbot" in the sidebar
-2. **Tell Your Mood**: Describe how you're feeling in the main chat
-3. **Receive Support**: Get empathetic responses and wellness suggestions
-4. **Explore Categories**: 
-   - 💬 Main Chat - Emotional support and motivation
-   - 🧘 Meditation - Mindfulness and meditation techniques
-   - 💪 Exercises - Physical activities to boost mood
-   - ✈️ Travel - Therapeutic destinations
+### Chatbot Tab
 
+1. User types how they are feeling
+
+2. Input is sent to Groq LLM via LangChain
+
+3. Model responds empathetically
+
+4. Conversation history is preserved in session state
+
+### Facial Emotion Detection Tab
+
+6. User starts the camera
+
+7. OpenCV captures live frames using cap.read()
+
+8. Frames are analyzed by a pretrained emotion model
+
+Dominant emotion and confidence are displayed live
 ## Configuration
 
 Environment variables (optional):
