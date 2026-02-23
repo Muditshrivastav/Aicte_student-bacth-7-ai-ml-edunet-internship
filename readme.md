@@ -158,4 +158,4 @@ Notes & next steps:
 
 - Groq provides extremely fast inference, making the chatbot suitable for real-time mental health support.
 
-- You can integrate LangChain more tightly by adding memory, tool calling, or RAG pipelines if required.
+- I can integrate LangChain more tightly by adding memory, tool calling, or RAG pipelines if required.
