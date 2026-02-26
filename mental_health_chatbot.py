@@ -1,11 +1,15 @@
 import streamlit as st
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from dotenv import load_dotenv
+import os
 
-# --- 1. CONFIG & STYLING ---
+load_dotenv()
+
+os.environ["groq_api_key"] = os.getenv("groq_api_key")
+
 st.set_page_config(page_title="Mental Health Companion", layout="wide")
 
-# Custom CSS to match your screenshot
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
@@ -34,12 +38,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 2. INITIALIZE GROQ ---
-# Replace with your actual key or use st.secrets["GROQ_API_KEY"]
-groq_api_key = "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"
 
 def get_llm():
     return ChatGroq(
-        groq_api_key=groq_api_key,
         model_name="llama-3.1-8b-instant",
         streaming=True
     )
