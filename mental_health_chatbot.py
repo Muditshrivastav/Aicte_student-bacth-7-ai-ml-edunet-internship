@@ -1,197 +1,119 @@
 import streamlit as st
-from PIL import Image
-import cv2
-import numpy as np
-import time
-from deepface import DeepFace
-from dotenv import load_dotenv
-
 from langchain_groq import ChatGroq
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
-# ---------------- LOAD ENV ----------------
-load_dotenv()
+# --- 1. CONFIG & STYLING ---
+st.set_page_config(page_title="Mental Health Companion", layout="wide")
 
-# ---------------- PAGE CONFIG ----------------
-st.set_page_config(
-    page_title="Mental Health Companion",
-    page_icon="🧠",
-    layout="centered"
-)
+# Custom CSS to match your screenshot
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stChatMessage { border-radius: 10px; margin-bottom: 10px; }
+    /* Styled Disclaimer Box */
+    .disclaimer {
+        background-color: #2b2c11;
+        border-left: 5px solid #eab308;
+        padding: 15px;
+        border-radius: 8px;
+        color: #fef08a;
+        margin-bottom: 25px;
+        font-size: 0.9rem;
+    }
+    /* Sidebar Helpline Box */
+    .helpline-box {
+        background-color: #1e293b;
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px solid #3b82f6;
+        margin-top: 20px;
+    }
+    .helpline-text { color: #93c5fd; font-size: 0.85rem; }
+    .helpline-phone { color: #3b82f6; font-weight: bold; font-size: 1rem; }
+    </style>
+""", unsafe_allow_html=True)
 
-# ---------------- SESSION STATE ----------------
+# --- 2. INITIALIZE GROQ ---
+# Replace with your actual key or use st.secrets["GROQ_API_KEY"]
+groq_api_key = "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"
+
+def get_llm():
+    return ChatGroq(
+        groq_api_key=groq_api_key,
+        model_name="llama-3.1-8b-instant",
+        streaming=True
+    )
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-if "affirmation" not in st.session_state:
-    st.session_state.affirmation = False
-
-if "camera_on" not in st.session_state:
-    st.session_state.camera_on = False
-
-# ---------------- SIDEBAR ----------------
-st.sidebar.title("🧠 Companion Controls")
-
-st.sidebar.subheader("Quick Mood")
-quick_mood = st.sidebar.radio(
-    "",
-    ["None", "😔 Sad", "😰 Anxious", "😵 Stressed", "😐 Neutral"]
-)
-
-st.sidebar.markdown("---")
-
-if st.sidebar.button("🌱 Daily Affirmation"):
-    st.session_state.affirmation = True
-
-if st.sidebar.button("🧹 Clear Conversation"):
-    st.session_state.messages = []
-    st.rerun()
-
-st.sidebar.markdown("---")
-st.sidebar.info(
-    "🚨 If you feel unsafe:\n\n"
-    "🇮🇳 **KIRAN Helpline (24/7): 1800-599-0019**"
-)
-
-# ---------------- TABS ----------------
-tab1, tab2 = st.tabs(["💬 Chatbot", "😊 Facial Emotion Detection"])
-
-# =========================================================
-# ===================== TAB 1 : CHATBOT ===================
-# =========================================================
-with tab1:
-    st.title("🧠 Mental Health Companion Chatbot")
-
-    st.write(
-        "This is a calm, supportive space to talk about how you're feeling."
+# --- 3. SIDEBAR (Companion Controls) ---
+with st.sidebar:
+    st.header("🧠 Companion Controls")
+    
+    st.subheader("Quick Mood")
+    mood = st.radio(
+        "How are you feeling?",
+        ["None", "😔 Sad", "😨 Anxious", "🤬 Stressed", "😐 Neutral"],
+        index=0
     )
+    
+    st.divider()
+    
+    if st.button("🌱 Daily Affirmation", use_container_width=True):
+        st.toast("You are resilient, and your feelings are valid.")
+        
+    if st.button("🗑️ Clear Conversation", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
 
-    st.warning(
-        "⚠️ Disclaimer: This chatbot is not a medical professional."
-    )
+    # Emergency Helpline Box
+    st.markdown("""
+    <div class="helpline-box">
+        <p class="helpline-text">🚨 If you feel unsafe:</p>
+        <p style='font-weight: bold; color: white; margin-bottom: 5px;'>IN KIRAN Mental Health Helpline</p>
+        <p class="helpline-phone">(24/7): 1800-599-0019</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # -------- LLM (GROQ) --------
-    llm = ChatGroq(
-        model="llama-3.1-8b-instant",
-        temperature=0.8
-    )
+# --- 4. MAIN INTERFACE ---
+st.title("🧠 Mental Health Companion Chatbot")
+st.write("This is a calm, supportive space to talk about how you're feeling.")
 
-    SYSTEM_CONTEXT = """
-You are a calm, empathetic mental health companion for students.
+# The Yellow Disclaimer Box
+st.markdown("""
+<div class="disclaimer">
+    ⚠️ Disclaimer: This chatbot is not a medical professional. If you are in a crisis, please reach out to the helplines in the sidebar.
+</div>
+""", unsafe_allow_html=True)
 
-Speak like a real, caring human — not a chatbot or therapist.
+# Display Message History
+for message in st.session_state.messages:
+    role = "user" if isinstance(message, HumanMessage) else "assistant"
+    with st.chat_message(role):
+        st.write(message.content)
 
-Guidelines:
-- Be natural and conversational
-- Avoid repeating the same comforting phrases
-- Offer emotional support
-- Suggest calming or grounding ideas only when appropriate
-- Do not sound clinical
-- Never diagnose or give medical advice
-"""
+# --- 5. CHAT INPUT (Root level to prevent jumping) ---
+if prompt := st.chat_input("Share what you're feeling..."):
+    
+    # 1. Display user message
+    with st.chat_message("user"):
+        st.write(prompt)
+    
+    # 2. Setup Persona
+    system_prompt = SystemMessage(content=(
+        f"You are a kind mental health companion. The user has selected a mood of {mood}. "
+        "Be empathetic, non-judgmental, and supportive. Focus on active listening."
+    ))
 
-    # -------- CHAT HISTORY --------
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    # -------- CHAT INPUT --------
-    user_input = st.chat_input("Share what you're feeling...")
-
-    if user_input:
-        if quick_mood != "None":
-            user_input = f"I am feeling {quick_mood.split(' ')[1].lower()}. {user_input}"
-
-        st.session_state.messages.append(
-            {"role": "user", "content": user_input}
-        )
-
-        with st.chat_message("user"):
-            st.markdown(user_input)
-
-        with st.spinner("Listening..."):
-            messages = [SystemMessage(content=SYSTEM_CONTEXT)]
-
-            for msg in st.session_state.messages[-6:]:
-                messages.append({
-                    "role": msg["role"],
-                    "content": msg["content"]
-                })
-
-            response = llm.invoke(messages).content
-
-        st.session_state.messages.append(
-            {"role": "assistant", "content": response}
-        )
-
-        with st.chat_message("assistant"):
-            st.markdown(response)
-
-    # -------- AFFIRMATION --------
-    if st.session_state.affirmation:
-        st.markdown("---")
-        st.markdown("### 🌞 Daily Affirmation")
-        st.write(
-            "You are doing the best you can with what you have right now — and that is enough."
-        )
-        st.session_state.affirmation = False
-
-# =========================================================
-# ============ TAB 2 : FACIAL EMOTION DETECTION ============
-# =========================================================
-with tab2:
-    st.header("😊 Live Facial Emotion Detection")
-
-    st.write(
-        "This feature uses your webcam to detect facial emotions in real time."
-    )
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("▶ Start Camera"):
-            st.session_state.camera_on = True
-
-    with col2:
-        if st.button("⏹ Stop Camera"):
-            st.session_state.camera_on = False
-
-    frame_placeholder = st.empty()
-    emotion_placeholder = st.empty()
-
-    if st.session_state.camera_on:
-        cap = cv2.VideoCapture(0)
-
-        if not cap.isOpened():
-            st.error("❌ Could not access the camera.")
-        else:
-            while st.session_state.camera_on:
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frame_placeholder.image(frame_rgb, channels="RGB")
-
-                try:
-                    result = DeepFace.analyze(
-                        frame_rgb,
-                        actions=["emotion"],
-                        enforce_detection=False
-                    )
-
-                    emotion = result[0]["dominant_emotion"]
-                    confidence = result[0]["emotion"][emotion]
-
-                    emotion_placeholder.success(
-                        f"Detected Emotion: **{emotion.upper()}** ({confidence:.2f}%)"
-                    )
-
-                except Exception:
-                    emotion_placeholder.warning("Face not clearly detected")
-
-                time.sleep(0.1)
-
-            cap.release()
-            frame_placeholder.empty()
-            emotion_placeholder.info("Camera stopped.")
+    # 3. Generate response with streaming
+    with st.chat_message("assistant"):
+        llm = get_llm()
+        # Combine system prompt + history + current user input
+        full_context = [system_prompt] + st.session_state.messages + [HumanMessage(content=prompt)]
+        
+        response = st.write_stream(llm.stream(full_context))
+    
+    # 4. Save to history
+    st.session_state.messages.append(HumanMessage(content=prompt))
+    st.session_state.messages.append(AIMessage(content=response))
